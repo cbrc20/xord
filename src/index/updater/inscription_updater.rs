@@ -1,5 +1,5 @@
 use super::*;
-use serde_json::{Value, json};
+use serde_json::{Value, json, to_string};
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 enum Curse {
@@ -635,7 +635,10 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
             "vout": satpoint.outpoint.vout
           })
         }),
-        "metadata": current_inscription.metadata(),
+        "metadata":  match current_inscription.metadata() {
+          Some(meta) => to_string(&meta)?,
+          _ => "{}".to_owned(),
+        },
         "metaprotocol": current_inscription.metaprotocol(),
         "old_satpoint": _old_satpoint
     });
