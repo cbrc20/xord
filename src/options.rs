@@ -77,6 +77,8 @@ pub(crate) struct Options {
   pub(crate) ignore_cursed: bool,
   #[arg(long, default_value = "5000", help = "Commit changes to the index file on disk every <COMMIT> blocks.")]
   pub(crate) commit: usize,
+  #[clap(long, help = "Inscription transaction will be pushed to <INSCRIPTION_TX_PUSH_URL>.")]
+  pub(crate) inscription_tx_push_url: Option<String>,
 }
 
 impl Options {
@@ -89,6 +91,13 @@ impl Options {
       Chain::Testnet
     } else {
       self.chain_argument
+    }
+  }
+
+  pub(crate) fn inscription_tx_push_url(&self) -> Option<String> {
+    match &self.inscription_tx_push_url {
+      Some(url) => Some(url.to_string()),
+      None => None
     }
   }
 

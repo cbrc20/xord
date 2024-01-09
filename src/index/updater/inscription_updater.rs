@@ -1,4 +1,5 @@
 use super::*;
+use serde_json::{Value, json};
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 enum Curse {
@@ -66,6 +67,7 @@ pub(super) struct InscriptionUpdater<'a, 'db, 'tx> {
   pub(super) unbound_inscriptions: u64,
   pub(super) value_cache: &'a mut HashMap<OutPoint, u64>,
   pub(super) value_receiver: &'a mut Receiver<u64>,
+  pub(super) index: &'a Index,
 }
 
 impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
@@ -74,6 +76,7 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
     tx: &Transaction,
     txid: Txid,
     input_sat_ranges: Option<&VecDeque<(u64, u64)>>,
+    inscription_txs: &mut Option<Vec<Value>>,
   ) -> Result {
     let mut envelopes = ParsedEnvelope::from_transaction(tx, self.filter_metaprotocol.clone()).into_iter().peekable();
     let mut floating_inscriptions = Vec::new();
@@ -321,8 +324,19 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
         }
         _ => new_satpoint,
       };
-
-      self.update_inscription_location(input_sat_ranges, flotsam, new_satpoint)?;
+      let current_inscription : Inscription;
+      if flotsam.inscription_id.txid == txid {
+        current_inscription = envelopes.clone().into_iter()
+        .nth(flotsam.inscription_id.index as usize)
+        .map(|envelope| envelope.payload).unwrap();
+      } else {
+        current_inscription = self.index.get_transaction(flotsam.inscription_id.txid)?.and_then(|tx| {
+          ParsedEnvelope::from_transaction(&tx, Vec::new())              .into_iter()
+          .nth(flotsam.inscription_id.index as usize)
+          .map(|envelope| envelope.payload)
+        }).unwrap();
+      }
+      self.update_inscription_location(input_sat_ranges, flotsam, new_satpoint, current_inscription, inscription_txs)?;
     }
 
     if is_coinbase {
@@ -331,7 +345,21 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
           outpoint: OutPoint::null(),
           offset: self.lost_sats + flotsam.offset - output_value,
         };
-        self.update_inscription_location(input_sat_ranges, flotsam, new_satpoint)?;
+
+        let current_inscription : Inscription;
+        if flotsam.inscription_id.txid == txid {
+          current_inscription = envelopes.clone().into_iter()
+          .nth(flotsam.inscription_id.index as usize)
+          .map(|envelope| envelope.payload).unwrap();
+        } else {
+          current_inscription = self.index.get_transaction(flotsam.inscription_id.txid)?.and_then(|tx| {
+            ParsedEnvelope::from_transaction(&tx, Vec::new())
+              .into_iter()
+              .nth(flotsam.inscription_id.index as usize)
+              .map(|envelope| envelope.payload)
+          }).unwrap();
+        }
+        self.update_inscription_location(input_sat_ranges, flotsam, new_satpoint, current_inscription, inscription_txs)?;
       }
       self.lost_sats += self.reward - output_value;
       Ok(())
@@ -369,6 +397,8 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
     input_sat_ranges: Option<&VecDeque<(u64, u64)>>,
     flotsam: Flotsam,
     new_satpoint: SatPoint,
+    current_inscription: Inscription,
+    inscription_txs: &mut Option<Vec<Value>>,
   ) -> Result {
     let inscription_id = flotsam.inscription_id;
     let (unbound, sequence_number) = match flotsam.origin {
@@ -552,6 +582,64 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
     self
       .sequence_number_to_satpoint
       .insert(sequence_number, &satpoint)?;
+
+    if let Some(inscription_txs) = inscription_txs {
+      self.append_inscription_tx(inscription_txs, flotsam, current_inscription)?;
+    }
+
+    Ok(())
+  }
+
+  fn append_inscription_tx(&mut self, inscription_txs: &mut Vec<Value>, flotsam: Flotsam, current_inscription: Inscription) -> Result {
+    let inscription_id = flotsam.inscription_id;
+    let origin = flotsam.origin;
+
+    let seq_number = self.id_to_sequence_number.get(inscription_id.store())?.unwrap().value();
+    let entry = self.sequence_number_to_entry.get(seq_number)?.map(|_entry| {InscriptionEntry::load(_entry.value())}).unwrap();
+
+    let satpoint = self.sequence_number_to_satpoint.get(seq_number)?.map(|_entry| {SatPoint::load(*_entry.value())}).unwrap();
+
+
+    let _old_satpoint = match origin {
+      Origin::Old { old_satpoint } => {
+        json!({
+          "offset": old_satpoint.offset,
+          "outpoint": json!({
+            "txid": old_satpoint.outpoint.txid.to_string(),
+            "vout": old_satpoint.outpoint.vout
+          })
+        })
+      },
+      _ => json!({}),
+    };
+
+    let data = json!({
+        "inscription_id": inscription_id.to_string(),
+        "location": satpoint.to_string(),
+        "block": self.height,
+        "entry": json!({
+          "fee": entry.fee,
+          "height": entry.height,
+          "number": entry.inscription_number,
+          "sequence_number": entry.sequence_number,
+          "timestamp": entry.timestamp,
+          "sat": match entry.sat {
+            Some(sat) => sat.n().to_string(),
+            None => u64::MAX.to_string(),
+          }
+        }),
+        "satpoint": json!({
+          "offset": satpoint.offset,
+          "outpoint": json!({
+            "txid": satpoint.outpoint.txid.to_string(),
+            "vout": satpoint.outpoint.vout
+          })
+        }),
+        "metadata": current_inscription.metadata(),
+        "metaprotocol": current_inscription.metaprotocol(),
+        "old_satpoint": _old_satpoint
+    });
+    inscription_txs.push(data);
 
     Ok(())
   }

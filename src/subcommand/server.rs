@@ -246,7 +246,7 @@ impl Server {
         csp_origin: self.csp_origin.clone(),
         domain: acme_domains.first().cloned(),
         index_sats: index.has_sat_index(),
-        is_json_api_enabled: self.enable_json_api,
+        is_json_api_enabled: true,
         decompress: self.decompress,
       });
 
@@ -721,7 +721,7 @@ impl Server {
           let runes = index.get_rune_balances_for_outpoint(outpoint)?;
 
           result.push(
-            Outputs {output: outpoint, details: 
+            Outputs {output: outpoint, details:
             OutputJson::new(
               outpoint,
               list,
@@ -1135,7 +1135,7 @@ impl Server {
           return Ok(String::from("lost"));
         }
       }
-      
+
       let output = tx_cache.get(&txid).unwrap().clone()
         .output
         .into_iter()
