@@ -352,7 +352,7 @@ impl<'index> Updater<'_> {
     let mut outpoint_to_value = wtx.open_table(OUTPOINT_TO_VALUE)?;
 
     let index_inscriptions = self.height >= index.first_inscription_height;
-    let mut inscription_txs: Option<Vec<Value>> = Some(Vec::new());
+    let mut inscription_txs: Option<Vec<Value>> = None;
 
     if index_inscriptions {
       if let Some(_) = &index.options.inscription_tx_push_url() {
@@ -639,8 +639,6 @@ impl<'index> Updater<'_> {
 
     self.height += 1;
     self.outputs_traversed += outputs_in_block;
-
-    inscription_txs.clone().unwrap().into_iter().for_each(|tx| log::info!("parsed transaction {:?}", tx));
 
     if let Some(inscription_tx_push_url) = &index.options.inscription_tx_push_url() {
       if let Some(inscription_txs) = inscription_txs {
