@@ -1,5 +1,6 @@
 use super::*;
 use serde_json::{Value, json, to_string};
+use base64::{Engine as _, engine::general_purpose};
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 enum Curse {
@@ -613,6 +614,11 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
       _ => json!({}),
     };
 
+    let mut content: String = "".to_owned();
+    if let Some(_body) = current_inscription.clone().into_body() {
+      content = general_purpose::STANDARD.encode(&_body);
+    }
+
     let data = json!({
         "inscription_id": inscription_id.to_string(),
         "location": satpoint.to_string(),
@@ -635,6 +641,8 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
             "vout": satpoint.outpoint.vout
           })
         }),
+        "content_type": current_inscription.content_type(),
+        "content": content,
         "metadata":  match current_inscription.metadata() {
           Some(meta) => to_string(&meta)?,
           _ => "{}".to_owned(),
