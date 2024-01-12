@@ -325,18 +325,11 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
         }
         _ => new_satpoint,
       };
-      let current_inscription : Inscription;
-      if flotsam.inscription_id.txid == txid {
-        current_inscription = envelopes.clone().into_iter()
+      let current_inscription : Inscription = self.index.get_transaction(flotsam.inscription_id.txid)?.and_then(|tx| {
+        ParsedEnvelope::from_transaction(&tx, Vec::new())              .into_iter()
         .nth(flotsam.inscription_id.index as usize)
-        .map(|envelope| envelope.payload).unwrap();
-      } else {
-        current_inscription = self.index.get_transaction(flotsam.inscription_id.txid)?.and_then(|tx| {
-          ParsedEnvelope::from_transaction(&tx, Vec::new())              .into_iter()
-          .nth(flotsam.inscription_id.index as usize)
-          .map(|envelope| envelope.payload)
-        }).unwrap();
-      }
+        .map(|envelope| envelope.payload)
+      }).unwrap();
       self.update_inscription_location(input_sat_ranges, flotsam, new_satpoint, current_inscription, inscription_txs)?;
     }
 
@@ -347,19 +340,11 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
           offset: self.lost_sats + flotsam.offset - output_value,
         };
 
-        let current_inscription : Inscription;
-        if flotsam.inscription_id.txid == txid {
-          current_inscription = envelopes.clone().into_iter()
+        let current_inscription : Inscription = self.index.get_transaction(flotsam.inscription_id.txid)?.and_then(|tx| {
+          ParsedEnvelope::from_transaction(&tx, Vec::new())              .into_iter()
           .nth(flotsam.inscription_id.index as usize)
-          .map(|envelope| envelope.payload).unwrap();
-        } else {
-          current_inscription = self.index.get_transaction(flotsam.inscription_id.txid)?.and_then(|tx| {
-            ParsedEnvelope::from_transaction(&tx, Vec::new())
-              .into_iter()
-              .nth(flotsam.inscription_id.index as usize)
-              .map(|envelope| envelope.payload)
-          }).unwrap();
-        }
+          .map(|envelope| envelope.payload)
+        }).unwrap();
         self.update_inscription_location(input_sat_ranges, flotsam, new_satpoint, current_inscription, inscription_txs)?;
       }
       self.lost_sats += self.reward - output_value;
