@@ -43,6 +43,7 @@ pub(super) struct InscriptionUpdater<'a, 'db, 'tx> {
   pub(super) chain: Chain,
   pub(super) cursed_inscription_count: u64,
   pub(super) filter_metaprotocol: Vec<String>,
+  pub(super) filter_content_json_field_p: Vec<String>,
   pub(super) flotsam: Vec<Flotsam>,
   pub(super) height: u32,
   pub(super) height_to_sequence_number: &'a mut Option<MultimapTable<'db, 'tx, u32, u32>>,
@@ -79,7 +80,7 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
     input_sat_ranges: Option<&VecDeque<(u64, u64)>>,
     inscription_txs: &mut Option<Vec<Value>>,
   ) -> Result {
-    let mut envelopes = ParsedEnvelope::from_transaction(tx, self.filter_metaprotocol.clone()).into_iter().peekable();
+    let mut envelopes = ParsedEnvelope::from_transaction(tx, self.filter_metaprotocol.clone(), self.filter_content_json_field_p.clone()).into_iter().peekable();
     let mut floating_inscriptions = Vec::new();
     let mut id_counter = 0;
     let mut inscribed_offsets = BTreeMap::new();
@@ -326,7 +327,7 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
         _ => new_satpoint,
       };
       let current_inscription : Inscription = self.index.get_transaction(flotsam.inscription_id.txid)?.and_then(|tx| {
-        ParsedEnvelope::from_transaction(&tx, Vec::new())              .into_iter()
+        ParsedEnvelope::from_transaction(&tx, Vec::new(), Vec::new())              .into_iter()
         .nth(flotsam.inscription_id.index as usize)
         .map(|envelope| envelope.payload)
       }).unwrap();
@@ -341,7 +342,7 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
         };
 
         let current_inscription : Inscription = self.index.get_transaction(flotsam.inscription_id.txid)?.and_then(|tx| {
-          ParsedEnvelope::from_transaction(&tx, Vec::new())              .into_iter()
+          ParsedEnvelope::from_transaction(&tx, Vec::new(), Vec::new())              .into_iter()
           .nth(flotsam.inscription_id.index as usize)
           .map(|envelope| envelope.payload)
         }).unwrap();

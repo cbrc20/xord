@@ -35,6 +35,8 @@ pub(crate) struct Options {
   pub(crate) db_cache_size: Option<usize>,
   #[arg(long, help = "Only index inscriptions that have a metaprotocol that starts with the given string.")]
   pub(crate) filter_metaprotocol: Vec<String>,
+  #[arg(long, help = "Only index inscriptions that have a json content that contains field p with the given string.")]
+  pub(crate) filter_content_json_field_p: Vec<String>,
   #[arg(
     long,
     help = "Don't look for inscriptions below <FIRST_INSCRIPTION_HEIGHT>."

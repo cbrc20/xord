@@ -450,6 +450,7 @@ impl<'index> Updater<'_> {
       chain: self.index.options.chain(),
       cursed_inscription_count,
       filter_metaprotocol: index.options.filter_metaprotocol.clone(),
+      filter_content_json_field_p: index.options.filter_content_json_field_p.clone(),
       flotsam: Vec::new(),
       height: self.height,
       height_to_sequence_number: &mut height_to_sequence_number,

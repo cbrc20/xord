@@ -9,6 +9,7 @@ use {
     },
   },
   std::iter::Peekable,
+  serde_json::{json, to_value}
 };
 
 pub(crate) const PROTOCOL_ID: [u8; 3] = *b"ord";
@@ -123,20 +124,38 @@ impl From<RawEnvelope> for ParsedEnvelope {
 }
 
 impl ParsedEnvelope {
-  pub(crate) fn from_transaction(transaction: &Transaction, filters: Vec<String>) -> Vec<Self> {
+  pub(crate) fn from_transaction(transaction: &Transaction, metaprotocol_filters: Vec<String>, content_json_field_p_filters: Vec<String>) -> Vec<Self> {
     RawEnvelope::from_transaction(transaction)
       .into_iter()
       .map(|envelope| envelope.into())
       .filter(|envelope: &ParsedEnvelope| {
-        if filters.is_empty() {
-          true // Aucun filtre spécifié, toutes les enveloppes sont incluses
-        } else {
+        if !metaprotocol_filters.is_empty() {
           match &envelope.payload.metaprotocol {
-            Some(metaprotocol) => filters
+            Some(metaprotocol) => metaprotocol_filters
               .iter()
               .any(|filter| metaprotocol.to_vec().starts_with(filter.as_bytes())),
             None => false,
           }
+        } else if !content_json_field_p_filters.is_empty() {
+          match &envelope.payload.into_body() {
+              Some(body) => {
+                let content = to_value(body).unwrap_or(json!({}));
+                if let Some(pv) = content.get("p") {
+                  if let Some(pvs) = pv.as_str() {
+                    content_json_field_p_filters
+                    .iter()
+                    .any(|filter| filter == pvs)
+                  } else {
+                    false
+                  }
+                } else {
+                  false
+                }
+              },
+              None => false,
+          }
+        } else {
+          true
         }
       })
       .collect()
