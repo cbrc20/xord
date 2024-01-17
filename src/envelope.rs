@@ -9,7 +9,7 @@ use {
     },
   },
   std::iter::Peekable,
-  serde_json::{json, to_value}
+  serde_json::{json, from_str}
 };
 
 pub(crate) const PROTOCOL_ID: [u8; 3] = *b"ord";
@@ -137,14 +137,19 @@ impl ParsedEnvelope {
             None => false,
           }
         } else if !content_json_field_p_filters.is_empty() {
-          match &envelope.payload.clone().into_body() {
+          match envelope.payload.clone().into_body() {
               Some(body) => {
-                let content = to_value(body).unwrap_or(json!({}));
-                if let Some(pv) = content.get("p") {
-                  if let Some(pvs) = pv.as_str() {
-                    content_json_field_p_filters
-                    .iter()
-                    .any(|filter| filter.to_lowercase() == pvs.to_lowercase())
+                let scontent = String::from_utf8(body).expect("");
+                if scontent.len() > 0 {
+                  let content = from_str(&scontent).unwrap_or(json!({}));
+                  if let Some(pv) = content.get("p") {
+                    if let Some(pvs) = pv.as_str() {
+                      content_json_field_p_filters
+                      .iter()
+                      .any(|filter| filter.to_lowercase() == pvs.to_lowercase())
+                    } else {
+                      false
+                    }
                   } else {
                     false
                   }
