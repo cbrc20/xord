@@ -1472,7 +1472,7 @@ impl Index {
     }
 
     Ok(self.get_transaction(inscription_id.txid)?.and_then(|tx| {
-      ParsedEnvelope::from_transaction(&tx, Vec::new())
+      ParsedEnvelope::from_transaction(&tx, Vec::new(), Vec::new())
         .into_iter()
         .nth(inscription_id.index as usize)
         .map(|envelope| envelope.payload)
@@ -1674,7 +1674,7 @@ impl Index {
 
   pub(crate) fn ranges(&self, outpoint: OutPoint) -> Result<Vec<(u64, u64)>> {
     match self.list_inner(outpoint.store())? {
-      Some(sat_ranges) => 
+      Some(sat_ranges) =>
         Ok(sat_ranges
            .chunks_exact(11)
            .map(|chunk| SatRange::load(chunk.try_into().unwrap()))
