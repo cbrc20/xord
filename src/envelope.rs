@@ -137,7 +137,7 @@ impl ParsedEnvelope {
             None => false,
           }
         } else if !content_json_field_p_filters.is_empty() {
-          match &envelope.payload.into_body() {
+          match &envelope.payload.clone().into_body() {
               Some(body) => {
                 let content = to_value(body).unwrap_or(json!({}));
                 if let Some(pv) = content.get("p") {
