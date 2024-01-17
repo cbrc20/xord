@@ -137,9 +137,9 @@ impl ParsedEnvelope {
             None => false,
           }
         } else if !content_json_field_p_filters.is_empty() {
-          match envelope.payload.clone().into_body() {
+          match &envelope.payload.clone().into_body() {
               Some(body) => {
-                let scontent = String::from_utf8(body).expect("");
+                let scontent = String::from_utf8_lossy(body);
                 if scontent.len() > 0 {
                   let content = from_str(&scontent).unwrap_or(json!({}));
                   if let Some(pv) = content.get("p") {
