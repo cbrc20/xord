@@ -144,7 +144,7 @@ impl ParsedEnvelope {
                   if let Some(pvs) = pv.as_str() {
                     content_json_field_p_filters
                     .iter()
-                    .any(|filter| filter == pvs)
+                    .any(|filter| filter.to_lowercase() == pvs.to_lowercase())
                   } else {
                     false
                   }
