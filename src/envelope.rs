@@ -141,6 +141,9 @@ impl ParsedEnvelope {
               Some(body) => {
                 let scontent = String::from_utf8_lossy(body);
                 if scontent.len() > 0 {
+                  if scontent.to_lowercase().ends_with(".element") { // Collect DMT's element inscription
+                    return true;
+                  }
                   let content = from_str(&scontent).unwrap_or(json!({}));
                   if let Some(pv) = content.get("p") {
                     if let Some(pvs) = pv.as_str() {
